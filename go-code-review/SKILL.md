@@ -1,5 +1,5 @@
 ---
-name: code-review-go
+name: go-code-review
 description: Comprehensive Go code review for bugs, formatting issues, performance problems, and test coverage. Use when user asks to "code review", "review code", "check my code", "review changes", or mentions code quality concerns for Go code.
 context: fork
 agent: general-purpose

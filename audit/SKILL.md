@@ -28,7 +28,7 @@ If the user specifies a lambda/directory, audit that specific target. Otherwise,
 
 ```bash
 # Find all lambda directories
-ls -d lambdas/go/bff-*-aws-lambda/
+ls -d lambdas/go/*-lambda/
 ```
 
 ### 1.2 Identify Known-Good Security Patterns
@@ -36,16 +36,16 @@ ls -d lambdas/go/bff-*-aws-lambda/
 Read these reference implementations that follow security best practices:
 
 **Authorization Pattern Examples:**
-- `lambdas/go/bff-delete-contact-accounts-aws-lambda/internal/service/service.go` (lines 51-67)
-- `lambdas/go/bff-get-balance-aws-lambda/internal/service/http.go` (line 33)
-- `lambdas/go/bff-get-contacts-aws-lambda/internal/service/service.go` (lines 41-57)
+- `lambdas/go/bff-delete-resource-lambda/internal/service/service.go` (lines 51-67)
+- `lambdas/go/bff-get-data-lambda/internal/service/http.go` (line 33)
+- `lambdas/go/bff-list-items-lambda/internal/service/service.go` (lines 41-57)
 
 **Key Security Patterns to Verify:**
-1. ✅ Services have `Organizations organizations.APIClient` in their struct
+1. ✅ Services have `AuthService auth.Client` in their struct
 2. ✅ HTTP handlers call `r.Context()` to extract auth context
-3. ✅ Ownership validation via `validateOwnership(ctx, organizationID)` or `ValidateUserAuthorization(ctx, organizationID)`
+3. ✅ Ownership validation via `validateOwnership(ctx, resourceID)` or `ValidateUserAuthorization(ctx, resourceID)`
 4. ✅ Validation happens BEFORE calling backend services
-5. ✅ Path parameters (org_id, account_number, contact_id) are used for auth checks
+5. ✅ Path parameters (resource_id, account_id, item_id) are used for auth checks
 
 ## Phase 2: Security Checks
 
@@ -54,7 +54,7 @@ For each lambda, perform these checks:
 ### Check 1: IDOR Detection
 
 **What to look for:**
-- Endpoints that accept resource identifiers (organization_id, account_number, contact_id, transaction_id, user_id)
+- Endpoints that accept resource identifiers (organization_id, resource_id, item_id, user_id)
 - Missing ownership validation before accessing resources
 - Path parameters that are extracted but never validated
 
@@ -67,7 +67,7 @@ For each lambda, perform these checks:
 
 **Red Flags:**
 - ❌ Endpoint accepts ID parameter but has no `validateOwnership()` call
-- ❌ Service struct missing `Organizations` client
+- ❌ Service struct missing `AuthService` client
 - ❌ Context not extracted with `r.Context()`
 - ❌ Path parameter extracted but never referenced in validation
 
@@ -75,9 +75,9 @@ For each lambda, perform these checks:
 ```go
 // VULNERABLE - No ownership check!
 func (s *Service) GetResourceHTTP(w http.ResponseWriter, r *http.Request) {
-    accountNumber := r.PathValue("account_number")
+    resourceID := r.PathValue("resource_id")
     // Direct call to backend without validation
-    response, err := s.BackendClient.GetResource(accountNumber)
+    response, err := s.BackendClient.GetResource(resourceID)
 }
 ```
 
@@ -85,15 +85,15 @@ func (s *Service) GetResourceHTTP(w http.ResponseWriter, r *http.Request) {
 ```go
 // SECURE - Ownership validated
 func (s *Service) GetResourceHTTP(w http.ResponseWriter, r *http.Request) {
-    accountNumber := r.PathValue("account_number")
+    resourceID := r.PathValue("resource_id")
 
     // Validate ownership BEFORE accessing resource
-    if err := s.validateOwnership(r.Context(), accountNumber); err != nil {
+    if err := s.validateOwnership(r.Context(), resourceID); err != nil {
         // Return 403 Forbidden
         return
     }
 
-    response, err := s.BackendClient.GetResource(accountNumber)
+    response, err := s.BackendClient.GetResource(resourceID)
 }
 ```
 
@@ -101,19 +101,19 @@ func (s *Service) GetResourceHTTP(w http.ResponseWriter, r *http.Request) {
 
 **What to look for:**
 - Missing context propagation through service layers
-- Services without Organizations client
+- Services without AuthService client
 - Endpoints that don't extract or use authentication context
 - Missing authorization middleware
 
 **Steps:**
 1. Use Glob to find service files: `**/internal/service/service.go`
 2. Read each service.go file
-3. Check if Service struct includes `Organizations organizations.APIClient`
+3. Check if Service struct includes `AuthService auth.Client`
 4. Verify methods accept and use `context.Context` as first parameter
 5. Look for `validateOwnership` or `ValidateUserAuthorization` functions
 
 **Red Flags:**
-- ❌ Service struct has no `Organizations` field
+- ❌ Service struct has no `AuthService` field
 - ❌ Service methods don't accept `context.Context`
 - ❌ No `validateOwnership()` function exists
 - ❌ Context passed to service but never used
@@ -122,21 +122,21 @@ func (s *Service) GetResourceHTTP(w http.ResponseWriter, r *http.Request) {
 ```go
 type Service struct {
     BackendClient    client.Client
-    Organizations    organizations.APIClient  // REQUIRED for auth
+    AuthService      auth.Client  // REQUIRED for auth
 }
 
-func (s *Service) validateOwnership(ctx context.Context, orgID string) error {
-    authEmail, err := s.Organizations.GetAuthEmail(ctx)
+func (s *Service) validateOwnership(ctx context.Context, resourceID string) error {
+    userID, err := s.AuthService.GetAuthUser(ctx)
     if err != nil {
-        return ErrGetAuthEmail
+        return ErrGetAuthUser
     }
 
-    _, org, err := s.Organizations.GetOrganizationByEmail(authEmail)
+    resource, err := s.AuthService.GetUserResource(userID, resourceID)
     if err != nil {
-        return ErrGetOrganization
+        return ErrGetResource
     }
 
-    if org == nil || org.ID != orgID {
+    if resource == nil || !resource.HasAccess {
         return ErrAccessDenied
     }
 
@@ -160,7 +160,7 @@ func (s *Service) validateOwnership(ctx context.Context, orgID string) error {
 
 **Sensitive Fields (DO NOT LOG):**
 - `password`, `secret`, `token`, `api_key`, `bearer`
-- `tax_id`, `ssn`, `ein`, `cuit`, `cuil`
+- `tax_id`, `ssn`, `ein`
 - `email` (in most contexts)
 - `account_number` (if contains PII)
 - Full response bodies (may contain any of the above)
@@ -229,9 +229,9 @@ Compare the target lambda against similar lambdas:
 **Example Comparison:**
 ```
 Similar lambdas:
-✅ bff-get-contacts-aws-lambda: Has validateOwnership
-✅ bff-get-balance-aws-lambda: Has ValidateUserAuthorization
-❌ bff-get-transactions-aws-lambda: NO authorization check ← VULNERABLE
+✅ bff-list-items-lambda: Has validateOwnership
+✅ bff-get-data-lambda: Has ValidateUserAuthorization
+❌ bff-example-service-lambda: NO authorization check ← VULNERABLE
 ```
 
 ## Phase 4: Generate Report
@@ -317,11 +317,11 @@ Before reporting a finding, ask:
 ## Example Output
 
 ```markdown
-# Security Audit Report - bff-get-transactions-aws-lambda
+# Security Audit Report - bff-example-service-lambda
 
 **Audit Date**: 2026-03-08
 **Audited By**: Claude Code Security Audit
-**Target**: lambdas/go/bff-get-transactions-aws-lambda
+**Target**: lambdas/go/bff-example-service-lambda
 
 ## Executive Summary
 
@@ -335,30 +335,30 @@ Before reporting a finding, ask:
 
 * **Severity**: HIGH
 * **Category**: idor
-* **Description**: The GetTransactionsHTTP endpoint accepts account_number but performs no ownership validation
+* **Description**: The GetResourceHTTP endpoint accepts resource_id but performs no ownership validation
 * **Exploit Scenario**:
   1. User A authenticates to Organization X
-  2. User A guesses account_number "123456" (belongs to Org Y)
-  3. User A calls GET /accounts/123456/transactions
+  2. User A guesses resource_id "123456" (belongs to Org Y)
+  3. User A calls GET /resources/123456
   4. BFF validates format only, no auth check
-  5. User A receives Org Y's transaction data
-* **Recommendation**: Add validateOwnership check before s.GetTransactions()
-* **Reference**: See bff-delete-contact-accounts-aws-lambda/internal/service/service.go:29
+  5. User A receives Org Y's resource data
+* **Recommendation**: Add validateOwnership check before s.GetResource()
+* **Reference**: See bff-delete-resource-lambda/internal/service/service.go:29
 
 [Additional findings...]
 
 ## Comparison Analysis
 
-| Lambda | Organizations Client | Context Usage | Auth Check | Security Score |
+| Lambda | AuthService Client | Context Usage | Auth Check | Security Score |
 |--------|---------------------|---------------|------------|----------------|
-| bff-get-contacts | ✅ | ✅ | ✅ | 100% |
-| bff-get-balance | ✅ | ✅ | ✅ | 100% |
-| bff-delete-contact-accounts | ✅ | ✅ | ✅ | 100% |
-| **bff-get-transactions** | ❌ | ❌ | ❌ | **0%** |
+| bff-list-items | ✅ | ✅ | ✅ | 100% |
+| bff-get-data | ✅ | ✅ | ✅ | 100% |
+| bff-delete-resource | ✅ | ✅ | ✅ | 100% |
+| **bff-example-service** | ❌ | ❌ | ❌ | **0%** |
 
 ## Recommendations
 
-1. **CRITICAL**: Add Organizations client to Service struct
+1. **CRITICAL**: Add AuthService client to Service struct
 2. **CRITICAL**: Implement validateOwnership function
 3. **CRITICAL**: Call validateOwnership in all HTTP handlers before backend calls
 4. Add comprehensive authorization tests
@@ -369,7 +369,7 @@ Before reporting a finding, ask:
 
 **Audit a specific lambda:**
 ```
-User: /audit bff-get-transactions-aws-lambda
+User: /audit bff-example-service-lambda
 ```
 
 **Audit all lambdas:**
@@ -380,8 +380,8 @@ User: /audit lambdas/go/
 
 **Audit with focus:**
 ```
-User: /audit bff-foo --idor-only
-User: /audit bff-bar --check-logging
+User: /audit bff-service-a --idor-only
+User: /audit bff-service-b --check-logging
 ```
 
 ## Post-Audit Actions

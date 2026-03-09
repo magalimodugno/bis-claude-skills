@@ -6,13 +6,13 @@ Comprehensive security auditing for Go Lambda functions.
 
 ```bash
 # Audit specific lambda
-/audit bff-get-transactions-aws-lambda
+/audit bff-example-service-lambda
 
 # Audit all lambdas
 /audit
 
 # Audit with path
-/audit lambdas/go/bff-*-aws-lambda
+/audit lambdas/go/*-lambda
 ```
 
 ## What It Checks
@@ -23,7 +23,7 @@ Comprehensive security auditing for Go Lambda functions.
 - Authorization checks bypassed
 
 ### 2. Authorization Bypass
-- Missing Organizations client in Service struct
+- Missing AuthService client in Service struct
 - No context propagation
 - Missing validateOwnership functions
 - Endpoints accessible without proper auth
@@ -45,9 +45,9 @@ Comprehensive security auditing for Go Lambda functions.
 ### Known-Good References
 
 The skill learns from these secure implementations:
-- `bff-delete-contact-accounts-aws-lambda` - Perfect authorization example
-- `bff-get-balance-aws-lambda` - ValidateUserAuthorization pattern
-- `bff-get-contacts-aws-lambda` - validateOwnership implementation
+- `bff-delete-resource-lambda` - Perfect authorization example
+- `bff-get-data-lambda` - ValidateUserAuthorization pattern
+- `bff-list-items-lambda` - validateOwnership implementation
 
 ### Required Security Controls
 
@@ -57,7 +57,7 @@ For any lambda that accepts resource IDs:
    ```go
    type Service struct {
        BackendClient    client.Client
-       Organizations    organizations.APIClient  // REQUIRED
+       AuthService      auth.Client  // REQUIRED
    }
    ```
 
@@ -77,18 +77,18 @@ For any lambda that accepts resource IDs:
 
 3. **Ownership validation function:**
    ```go
-   func (s *Service) validateOwnership(ctx context.Context, orgID string) error {
-       authEmail, err := s.Organizations.GetAuthEmail(ctx)
+   func (s *Service) validateOwnership(ctx context.Context, resourceID string) error {
+       userID, err := s.AuthService.GetAuthUser(ctx)
        if err != nil {
-           return ErrGetAuthEmail
+           return ErrGetAuthUser
        }
 
-       _, org, err := s.Organizations.GetOrganizationByEmail(authEmail)
+       resource, err := s.AuthService.GetUserResource(userID, resourceID)
        if err != nil {
-           return ErrGetOrganization
+           return ErrGetResource
        }
 
-       if org == nil || org.ID != orgID {
+       if resource == nil || !resource.HasAccess {
            return ErrAccessDenied
        }
 

@@ -10,7 +10,7 @@ Auditoría de seguridad integral para detectar vulnerabilidades IDOR, bypasses d
 **Uso:**
 ```bash
 /audit                          # Audita todos los lambdas en lambdas/go/
-/audit bff-get-transactions    # Audita un lambda específico
+/audit bff-example-service     # Audita un lambda específico
 ```
 
 **Detecta:**
@@ -19,12 +19,12 @@ Auditoría de seguridad integral para detectar vulnerabilidades IDOR, bypasses d
 - Logging de datos sensibles (PII, tokens, passwords)
 - Headers de seguridad faltantes
 
-### 2. code-review-go
+### 2. go-code-review
 Code review integral para código Go que detecta bugs, problemas de formateo, issues de performance y gaps de cobertura de tests.
 
 **Uso:**
 ```bash
-/code-review-go    # Revisa todos los cambios Go en el branch actual
+/go-code-review    # Revisa todos los cambios Go en el branch actual
 ```
 
 **Detecta:**
@@ -65,7 +65,7 @@ Workflow completo para construir código Go, correr tests con cobertura, agregar
 ```bash
 # Linux/Mac
 cp -r audit ~/.claude/skills/
-cp -r code-review-go ~/.claude/skills/
+cp -r go-code-review ~/.claude/skills/
 cp -r go-test-coverage ~/.claude/skills/
 
 ```
@@ -85,7 +85,7 @@ Si quieres mantener las skills en este repositorio y que se actualicen automáti
 ```bash
 # Linux/Mac
 ln -s $(pwd)/audit ~/.claude/skills/audit
-ln -s $(pwd)/code-review-go ~/.claude/skills/code-review-go
+ln -s $(pwd)/go-code-review ~/.claude/skills/go-code-review
 ln -s $(pwd)/go-test-coverage ~/.claude/skills/go-test-coverage
 ```
 

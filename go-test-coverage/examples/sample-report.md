@@ -1,8 +1,8 @@
 # Go Test Coverage Report - Sample
 
 **Generated:** 2026-03-08 15:30:00
-**Project:** auth0-log-stream-aws-lambda
-**Branch:** feature/auth0-log-stream
+**Project:** example-service-lambda
+**Branch:** feature/example-service
 
 ## Executive Summary
 

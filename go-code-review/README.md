@@ -6,7 +6,7 @@ Comprehensive code quality review for Go changes in your current branch.
 
 ```bash
 # Review all Go changes in current branch vs main
-/code-review-go
+/go-code-review
 ```
 
 That's it! The skill will analyze your changes and provide a detailed report.
@@ -137,7 +137,7 @@ Confidence: 95/100
 
 ### Example 1: Basic Review
 ```bash
-$ /code-review-go
+$ /go-code-review
 
 # Code Review Report - Go
 Branch: feature/new-endpoint
@@ -157,7 +157,7 @@ The function dereferences `user` without nil check...
 
 ### Example 2: With Fixes
 ```bash
-$ /code-review-go
+$ /go-code-review
 
 [Report shows 2 HIGH issues]
 
@@ -270,9 +270,9 @@ func ProcessOrder(order *Order) error {
 // Skill suggests creating: order_test.go
 ```
 
-## Comparison: `/audit` vs `/code-review-go`
+## Comparison: `/audit` vs `/go-code-review`
 
-| Feature | /audit | /code-review-go |
+| Feature | /audit | /go-code-review |
 |---------|--------|-----------------|
 | **Focus** | Security | Code Quality |
 | **Detects** | IDOR, auth bypass, logging | Bugs, performance, tests |
@@ -286,7 +286,7 @@ func ProcessOrder(order *Order) error {
 ## Tips
 
 ### Best Practices
-1. Run `/code-review-go` before committing
+1. Run `/go-code-review` before committing
 2. Address HIGH issues before pushing
 3. Fix MEDIUM issues when time allows
 4. Use golangci-lint for best results
@@ -307,7 +307,7 @@ func ProcessOrder(order *Order) error {
 
 Want to customize checks? Edit the SKILL.md file:
 ```bash
-~/.claude/skills/code-review-go/SKILL.md
+~/.claude/skills/go-code-review/SKILL.md
 ```
 
 Add your own patterns, adjust confidence thresholds, or modify report format.
