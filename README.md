@@ -19,7 +19,28 @@ Auditoría de seguridad integral para detectar vulnerabilidades IDOR, bypasses d
 - Logging de datos sensibles (PII, tokens, passwords)
 - Headers de seguridad faltantes
 
-### 2. go-test-coverage
+### 2. code-review-go
+Code review integral para código Go que detecta bugs, problemas de formateo, issues de performance y gaps de cobertura de tests.
+
+**Uso:**
+```bash
+/code-review-go    # Revisa todos los cambios Go en el branch actual
+```
+
+**Detecta:**
+- Bugs comunes (nil pointers, errores sin chequear, goroutine leaks)
+- Problemas de formateo y estilo (vía golangci-lint)
+- Issues de performance (concatenación de strings, allocations innecesarias)
+- Cobertura de tests insuficiente
+- Validación contra CLAUDE.md (guidelines del codebase)
+
+**Características:**
+- Análisis de 50+ linters vía golangci-lint
+- Solo reporta issues con confianza >= 80/100
+- Sugiere casos de prueba para código sin tests
+- Ofrece arreglar issues de alta prioridad automáticamente
+
+### 3. go-test-coverage
 Workflow completo para construir código Go, correr tests con cobertura, agregar tests faltantes usando patrones table-driven con nomenclatura Given/When/Then, y mostrar resultados.
 
 **Uso:**
@@ -44,6 +65,7 @@ Workflow completo para construir código Go, correr tests con cobertura, agregar
 ```bash
 # Linux/Mac
 cp -r audit ~/.claude/skills/
+cp -r code-review-go ~/.claude/skills/
 cp -r go-test-coverage ~/.claude/skills/
 
 ```
@@ -63,6 +85,7 @@ Si quieres mantener las skills en este repositorio y que se actualicen automáti
 ```bash
 # Linux/Mac
 ln -s $(pwd)/audit ~/.claude/skills/audit
+ln -s $(pwd)/code-review-go ~/.claude/skills/code-review-go
 ln -s $(pwd)/go-test-coverage ~/.claude/skills/go-test-coverage
 ```
 
